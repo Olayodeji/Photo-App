@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>One-Tap Photo Editor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{--bg:#f3faf8;--card:#fff;--tint:#e3f4f0;--tx:#1b2a28;--mu:#5f7370;--bd:#d3e6e2;--ac:#0b8a79;--ac2:#fff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:18px}
+h1{font-size:24px;margin:0 0 4px;color:var(--ac)}.sub{color:var(--mu);margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--bd);border-top:4px solid var(--ac);border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:0 2px 10px rgba(11,138,121,.08)}
+.stage{display:flex;align-items:center;justify-content:center;min-height:260px;background:var(--tint);border-radius:10px;overflow:hidden}
+canvas{max-width:100%;max-height:62vh;display:block}
+.drop{text-align:center;color:var(--mu);padding:40px 16px}
+.drop.over{outline:2px dashed var(--ac)}
+button,.btn{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;padding:9px 13px;cursor:pointer}
+button.p,.btn.p{background:var(--ac);color:var(--ac2);border-color:var(--ac);font-weight:600}
+button:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.thumbs{display:flex;gap:8px;overflow-x:auto;margin-top:12px;padding-bottom:4px}
+.thumbs img{height:54px;width:54px;object-fit:cover;border-radius:8px;border:2px solid transparent;cursor:pointer;flex:none}
+.thumbs img.on{border-color:var(--ac)}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--ac);margin:0 0 10px}
+.looks{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
+.look{padding:6px;text-align:center;font-size:13px;border-width:2px}
+.look canvas{width:100%;height:auto;max-height:none;border-radius:6px;margin-bottom:4px;background:var(--bg)}
+.look.on{border-color:var(--ac);background:var(--tint);font-weight:600}
+.wm{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.wm .full{grid-column:1/-1}
+label.f{font-size:13px;color:var(--mu);display:block}
+input[type=text],select{width:100%;font:inherit;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);margin-top:3px}
+.msg{color:var(--mu);font-size:13px;margin-top:8px;min-height:18px}
+</style></head><body><div class="wrap">
+<h1>One-Tap Photo Editor</h1>
+<p class="sub">Add your photos, tap a look, add your watermark, download. Your photos never leave your device.</p>
+
+<div class="card">
+ <div class="stage" id="stage"><div class="drop" id="drop"><p><b>Drop photos here</b><br>or tap “Add photos”</p></div><canvas id="cv" hidden></canvas></div>
+ <div class="thumbs" id="thumbs"></div>
+ <div class="row">
+  <label class="btn p" style="margin:0">Add photos<input id="file" type="file" accept="image/*" multiple hidden></label>
+  <button id="dl" disabled>Download this photo</button>
+  <button id="dlall" disabled>Download all (ZIP)</button>
+  <button id="rm" disabled>Remove photo</button>
+ </div>
+ <div class="msg" id="msg"></div>
+</div>
+
+<div class="card" id="pay">
+ <h2>Download your photos</h2>
+ <p style="margin:0 0 6px"><b id="pmain">Monthly subscription</b> <span id="local" style="color:var(--mu)"></span></p>
+ <p class="sub" style="margin-bottom:10px">Try every look for free. Subscribe for full-quality downloads, batch ZIP and no preview mark. Cancel any time.</p>
+ <div class="wm"><label class="f full">Your email<input type="text" id="em" placeholder="you@example.com"></label>
+ <div class="full row" style="margin-top:0"><button class="p" id="sub">Subscribe</button><button id="haskey">I already subscribed</button></div></div>
+ <div class="msg" id="pmsg"></div>
+</div>
+<div class="card" id="acct" hidden>
+ <h2>Subscription active</h2>
+ <p class="sub" style="margin-bottom:8px">Full-quality downloads are unlocked. Save your access key to sign in on another device.</p>
+ <input type="text" id="keybox" readonly onclick="this.select()">
+</div>
+<div class="card">
+ <h2>1. Pick a look (applies to all photos)</h2>
+ <div class="looks" id="looks"></div>
+</div>
+
+<div class="card">
+ <h2>2. Watermark</h2>
+ <div class="wm">
+  <label class="f full">Watermark text<input type="text" id="wt" value="© Your Church Name"></label>
+  <label class="f">Position<select id="wp"><option value="br">Bottom right</option><option value="bl">Bottom left</option><option value="bc">Bottom centre</option><option value="tr">Top right</option><option value="tl">Top left</option><option value="tc">Top centre</option><option value="c">Centre</option></select></label>
+  <label class="f">Size<select id="wz"><option value="3.5">Small</option><option value="5.5" selected>Medium</option><option value="8">Large</option></select></label>
+  <label class="f">Colour<select id="wc"><option value="#ffffff">White</option><option value="#111111">Black</option><option value="#f2c14e">Gold</option></select></label>
+  <label class="f">Repeat across photo<select id="tile"><option value="0">No</option><option value="1">Yes</option></select></label>
+  <div class="full row" style="margin-top:0"><label class="btn" style="margin:0">Add a logo (optional)<input id="logo" type="file" accept="image/*" hidden></label><button id="nologo">Remove logo</button></div>
+ </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const LOOKS=[['orig','Original',{}],['auto','Auto enhance',{sat:1.12}],['vivid','Vivid',{sat:1.45,con:1.08}],['warm','Warm',{mr:1.08,mb:.9,sat:1.1}],['cool','Cool',{mr:.92,mb:1.1,sat:1.05}],['bw','Black & White',{gray:1,con:1.08}],['noir','Noir',{gray:1,con:1.5,vig:.6}],['vintage','Vintage',{sep:.55,lift:30,vig:.35,sat:.9}],['fade','Soft fade',{sat:.8,lift:28}]];
+let photos=[],cur=-1,look='auto',logo=null,raf=0;
+const cv=$('cv');
+
+function levels(p){
+ const h=new Uint32Array(256);let n=0,sum=0;
+ for(let i=0;i<p.length;i+=16){const l=(.299*p[i]+.587*p[i+1]+.114*p[i+2])|0;h[l]++;n++;sum+=l}
+ let a=0,lo=0,hi=255;
+ for(let i=0;i<256;i++){a+=h[i];if(a>=n*.005){lo=i;break}}
+ a=0;for(let i=255;i>=0;i--){a+=h[i];if(a>=n*.005){hi=i;break}}
+ if(hi-lo<40){lo=0;hi=255}
+ const m=Math.min(.9,Math.max(.1,(sum/n-lo)/(hi-lo))),g=Math.min(1.3,Math.max(.7,Math.log(.5)/Math.log(m)));
+ const lut=new Uint8ClampedArray(256);
+ for(let i=0;i<256;i++)lut[i]=255*Math.pow(Math.min(1,Math.max(0,(i-lo)/(hi-lo))),g);
+ return lut;
+}
+function applyLook(x,w,h,key){
+ if(key==='orig')return;
+ const o=Object.assign({sat:1,con:1,vig:0,lift:0,mr:1,mb:1,gray:0,sep:0},LOOKS.find(l=>l[0]===key)[2]);
+ const d=x.getImageData(0,0,w,h),p=d.data,lut=levels(p);
+ for(let i=0;i<p.length;i+=4){
+  let r=lut[p[i]]*o.mr,g=lut[p[i+1]],b=lut[p[i+2]]*o.mb;
+  if(o.sep){const nr=.393*r+.769*g+.189*b,ng=.349*r+.686*g+.168*b,nb=.272*r+.534*g+.131*b;r+=(nr-r)*o.sep;g+=(ng-g)*o.sep;b+=(nb-b)*o.sep}
+  const l=.299*r+.587*g+.114*b;
+  if(o.gray){r=g=b=l}else{r=l+(r-l)*o.sat;g=l+(g-l)*o.sat;b=l+(b-l)*o.sat}
+  if(o.con!==1){r=(r-128)*o.con+128;g=(g-128)*o.con+128;b=(b-128)*o.con+128}
+  if(o.lift){const k=1-o.lift/255;r=r*k+o.lift;g=g*k+o.lift;b=b*k+o.lift}
+  if(o.vig){const q=i>>2,dx=(q%w)/w-.5,dy=((q/w)|0)/h-.5,f=1-o.vig*(dx*dx+dy*dy)*2;r*=f;g*=f;b*=f}
+  p[i]=r;p[i+1]=g;p[i+2]=b;
+ }
+ x.putImageData(d,0,0);
+}
+function block(x,px,py,bw,bh,t,fs,lw,lh){
+ let y=py;
+ if(logo){x.drawImage(logo,px+(bw-lw)/2,y,lw,lh);y+=lh+(t?fs*.3:0)}
+ if(t){x.textAlign='center';x.fillText(t,px+bw/2,y+fs/2)}
+}
+function watermark(x,w,h){
+ const t=$('wt').value.trim();if(!t&&!logo)return;
+ const fs=Math.max(10,w*+$('wz').value/100);
+ x.font=fs+'px system-ui,sans-serif';x.textBaseline='middle';x.fillStyle=$('wc').value;
+ x.shadowColor='rgba(0,0,0,.5)';x.shadowBlur=fs*.15;x.globalAlpha=.8;
+ const tw=t?x.measureText(t).width:0,lw=logo?w*.12:0,lh=logo?lw*logo.naturalHeight/logo.naturalWidth:0;
+ const bw=Math.max(tw,lw),bh=(logo?lh:0)+(logo&&t?fs*.3:0)+(t?fs:0);
+ if($('tile').value==='1'){
+  x.save();x.translate(w/2,h/2);x.rotate(-.45);const n=Math.hypot(w,h);
+  for(let gy=-n;gy<n;gy+=bh*3.2)for(let gx=-n;gx<n;gx+=bw*1.7)block(x,gx-bw/2,gy-bh/2,bw,bh,t,fs,lw,lh);
+  x.restore();
+ }else{
+  const m=w*.03,p=$('wp').value;
+  block(x,p.includes('l')?m:p.includes('r')?w-m-bw:(w-bw)/2,p[0]==='t'?m:p[0]==='b'?h-m-bh:(h-bh)/2,bw,bh,t,fs,lw,lh);
+ }
+ x.globalAlpha=1;x.shadowBlur=0;
+}
+function render(img,max,c,key,wm,prev){
+ let w=img.naturalWidth,h=img.naturalHeight,k=Math.min(1,max/Math.max(w,h));
+ w=Math.round(w*k);h=Math.round(h*k);c.width=w;c.height=h;
+ const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,w,h);
+ applyLook(x,w,h,key);if(wm)watermark(x,w,h);if(prev)previewMark(x,w,h);
+}
+function draw(){
+ cancelAnimationFrame(raf);
+ raf=requestAnimationFrame(()=>{if(cur>=0)render(photos[cur].img,paid?1500:640,cv,look,true,!paid)});
+}
+function buildLooks(){
+ const box=$('looks');box.innerHTML='';
+ LOOKS.forEach(([k,name])=>{
+  const b=document.createElement('button');b.className='look'+(k===look?' on':'');
+  const c=document.createElement('canvas');b.appendChild(c);b.appendChild(document.createTextNode(name));
+  if(cur>=0)render(photos[cur].img,150,c,k,false);else{c.width=150;c.height=100}
+  b.onclick=()=>{look=k;buildLooks();draw()};box.appendChild(b);
+ });
+}
+function refresh(){
+ const has=cur>=0;
+ $('drop').hidden=has;cv.hidden=!has;
+ ['dl','dlall','rm'].forEach(i=>$(i).disabled=!has);
+ $('thumbs').innerHTML='';
+ photos.forEach((p,i)=>{const t=new Image();t.src=p.url;t.className=i===cur?'on':'';t.onclick=()=>{cur=i;refresh()};$('thumbs').appendChild(t)});
+ buildLooks();draw();
+}
+function add(files){
+ [...files].filter(f=>f.type.startsWith('image/')).forEach(f=>{
+  const url=URL.createObjectURL(f),img=new Image();
+  img.onload=()=>{photos.push({name:f.name.replace(/\.[^.]+$/,''),img,url});if(cur<0)cur=0;refresh()};
+  img.onerror=()=>{$('msg').textContent='Couldn’t open '+f.name+'. Try a JPG or PNG.'};
+  img.src=url;
+ });
+}
+$('file').onchange=e=>{add(e.target.files);e.target.value=''};
+$('stage').ondragover=e=>{e.preventDefault();$('drop').classList.add('over')};
+$('stage').ondragleave=()=>$('drop').classList.remove('over');
+$('stage').ondrop=e=>{e.preventDefault();$('drop').classList.remove('over');add(e.dataTransfer.files)};
+$('logo').onchange=e=>{const f=e.target.files[0];if(!f)return;const i=new Image();i.onload=()=>{logo=i;draw()};i.src=URL.createObjectURL(f);e.target.value=''};
+$('nologo').onclick=()=>{logo=null;draw()};
+$('rm').onclick=()=>{photos.splice(cur,1);cur=photos.length?Math.min(cur,photos.length-1):-1;refresh()};
+const WM=['wt','wp','wz','wc','tile'];
+WM.forEach(id=>['input','change'].forEach(ev=>$(id).addEventListener(ev,()=>{draw();try{localStorage.setItem('wm2',JSON.stringify(Object.fromEntries(WM.map(i=>[i,$(i).value]))))}catch(e){}})));
+try{const o=JSON.parse(localStorage.getItem('wm2')||'{}');for(const k in o)if($(k))$(k).value=o[k]}catch(e){}
+function blobOf(p){const c=document.createElement('canvas');render(p.img,4000,c,look,true);return new Promise(r=>c.toBlob(r,'image/jpeg',.92))}
+function saveFile(name,data){const a=document.createElement('a');a.href=URL.createObjectURL(data);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);$('msg').textContent='Saved.'}
+$('dl').onclick=async()=>{if(!paid)return needPay();const p=photos[cur];$('msg').textContent='Preparing…';await saveFile(p.name+'-edited.jpg',await blobOf(p))};
+$('dlall').onclick=async()=>{if(!paid)return needPay();
+ if(typeof JSZip==='undefined'){$('msg').textContent='ZIP tool didn’t load. Download photos one at a time.';return}
+ const z=new JSZip();
+ for(let i=0;i<photos.length;i++){$('msg').textContent='Processing '+(i+1)+' of '+photos.length+'…';z.file(photos[i].name+'-edited.jpg',await blobOf(photos[i]))}
+ await saveFile('edited-photos.zip',await z.generateAsync({type:'blob'}));
+};
+let paid=false;const API='/.netlify/functions/';
+const ls=(k,v)=>{try{return v===undefined?localStorage.getItem(k):localStorage.setItem(k,v)}catch(e){}};
+async function api(n,b){const r=await fetch(API+n,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Something went wrong. Please try again.');return j}
+function previewMark(x,w,h){x.save();x.translate(w/2,h/2);x.rotate(-.5);const fs=w*.09;x.font='bold '+fs+'px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.globalAlpha=.4;x.fillStyle='#fff';x.strokeStyle='#000';x.lineWidth=fs*.04;const n=Math.hypot(w,h);for(let y=-n;y<n;y+=fs*3)for(let g=-n;g<n;g+=fs*6){x.strokeText('PREVIEW',g,y);x.fillText('PREVIEW',g,y)}x.restore()}
+function needPay(){$('msg').textContent='Subscribe below to download full-quality photos.';$('pay').scrollIntoView({behavior:'smooth'})}
+function setPaid(v,key){paid=v;$('pay').hidden=v;$('acct').hidden=!v;if(v&&key)$('keybox').value=key;draw()}
+async function check(key){try{const j=await api('status',{token:key});if(j.active){ls('key',key);setPaid(true,key);return true}}catch(e){}return false}
+$('sub').onclick=async()=>{$('sub').disabled=true;$('pmsg').textContent='Opening secure checkout…';try{const j=await api('subscribe',{email:$('em').value.trim()});location.href=j.url}catch(e){$('pmsg').textContent=e.message;$('sub').disabled=false}};
+$('haskey').onclick=async()=>{const k=(prompt('Paste your access key')||'').trim();if(k&&!(await check(k)))$('pmsg').textContent='That key isn’t active. Check it or subscribe again.'};
+(async()=>{
+ fetch(API+'price').then(r=>r.json()).then(j=>{const f=(a,c)=>new Intl.NumberFormat(undefined,{style:'currency',currency:c,maximumFractionDigits:0}).format(a);if(j.amount){$('pmain').textContent=f(j.amount,j.currency)+' per month';if(j.local)$('local').textContent='(about '+f(j.local.amount,j.local.currency)+')'}}).catch(()=>{});
+ const q=new URLSearchParams(location.search),ref=q.get('reference')||q.get('trxref');
+ if(ref){$('pmsg').textContent='Confirming your payment…';try{const j=await api('verify',{reference:ref});ls('key',j.token);setPaid(true,j.token);history.replaceState(null,'',location.pathname)}catch(e){$('pmsg').textContent=e.message}return}
+ const k=ls('key');if(k)await check(k);
+})();
+buildLooks();
+</script></div></body></html>

@@ -1,0 +1,15 @@
+// Paystack is the source of truth: access lasts only while the subscription is active.
+const { ps, read, res } = require('../lib');
+exports.handler = async e => {
+  try {
+    const t = read(JSON.parse(e.body || '{}').token);
+    if (!t) return res(401, { active: false, error: 'Invalid access key.' });
+    const j = await ps('/customer/' + encodeURIComponent(t.c));
+    const subs = (j.data && j.data.subscriptions) || [];
+    const now = Date.now();
+    const ok = subs.some(s => s.status === 'active' ||
+      (s.status === 'non-renewing' && (!s.next_payment_date || new Date(s.next_payment_date) > now)));
+    const justPaid = now - t.t < 3600000; // the subscription can take a moment to appear
+    return res(200, { active: ok || justPaid });
+  } catch (x) { return res(500, { active: false, error: 'Could not check your subscription.' }); }
+};

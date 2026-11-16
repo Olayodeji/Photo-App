@@ -19,7 +19,7 @@ Site configuration > Environment variables:
 Then Deploys > Trigger deploy. Never paste your secret key into the page or share it.
 
 ## 4. Test, then go live
-Subscribe on your site using a Paystack test card (listed in Paystack's docs). To go live, swap in your **live** secret key and a **live** plan code (test and live plans are separate), then redeploy.
+Subscribe on your site using a Paystack test card (listed at paystack.com/docs/payments/test-payments). To go live, swap in your **live** secret key and a **live** plan code (test and live plans are separate), then redeploy.
 
 ## 5. Your own address
 Netlify > Domain management > Add a domain, then follow the steps.

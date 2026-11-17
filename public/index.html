@@ -43,6 +43,9 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--ac);
 .wm{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .wm .full{grid-column:1/-1}
 label.f{font-size:13px;color:var(--mu);display:block}
+input[type=range]{width:100%;margin:8px 0 0;accent-color:var(--ac)}
+input[type=color]{width:100%;height:38px;padding:2px;margin-top:3px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);cursor:pointer}
+label.f output{float:right;color:var(--ac);font-weight:600}
 input[type=text],select{width:100%;font:inherit;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);margin-top:3px}
 .msg{color:var(--mu);font-size:13px;margin-top:8px;min-height:18px}
 </style></head><body><div class="wrap">
@@ -72,9 +75,17 @@ input[type=text],select{width:100%;font:inherit;padding:8px;border:1px solid var
    <div id="t-looks"><div class="looks" id="looks"></div><div class="row"><button id="applyall">Use this look on all photos</button></div></div>
    <div id="t-wm" hidden><div class="wm">
     <label class="f full">Watermark text<input type="text" id="wt" value="© Your Church Name"></label>
+    <label class="f">Font<select id="wf"><option value="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">Clean</option><option value="Georgia,'Times New Roman',serif">Serif</option><option value="'Trebuchet MS',Verdana,sans-serif">Friendly</option><option value="'Brush Script MT','Segoe Script',cursive">Script</option><option value="Impact,'Arial Black',sans-serif">Poster</option><option value="'Courier New',monospace">Typewriter</option></select></label>
+    <label class="f">Weight<select id="ww"><option value="300">Light</option><option value="400" selected>Regular</option><option value="600">Semi-bold</option><option value="700">Bold</option><option value="900">Extra bold</option></select></label>
+    <label class="f">Style<select id="wi"><option value="normal">Normal</option><option value="italic">Italic</option></select></label>
+    <label class="f">Capitals<select id="wcap"><option value="as">As typed</option><option value="up">ALL CAPS</option><option value="lo">all lowercase</option></select></label>
+    <label class="f full">Size<output id="o-wz"></output><input type="range" id="wz" min="2" max="16" step="0.5" value="5.5"></label>
+    <label class="f full">Letter spacing<output id="o-wl"></output><input type="range" id="wl" min="0" max="20" step="1" value="0"></label>
+    <label class="f full">Opacity<output id="o-wo"></output><input type="range" id="wo" min="10" max="100" step="5" value="80"></label>
+    <label class="f full">Distance from edge<output id="o-wmg"></output><input type="range" id="wmg" min="0" max="20" step="0.5" value="6"></label>
     <label class="f">Position<select id="wp"><option value="br">Bottom right</option><option value="bl">Bottom left</option><option value="bc">Bottom centre</option><option value="tr">Top right</option><option value="tl">Top left</option><option value="tc">Top centre</option><option value="c">Centre</option></select></label>
-    <label class="f">Size<select id="wz"><option value="3.5">Small</option><option value="5.5" selected>Medium</option><option value="8">Large</option></select></label>
-    <label class="f">Colour<select id="wc"><option value="#ffffff">White</option><option value="#111111">Black</option><option value="#f2c14e">Gold</option></select></label>
+    <label class="f">Colour<input type="color" id="wc" value="#ffffff"></label>
+    <label class="f">Shadow<select id="wsh"><option value="1">On</option><option value="0">Off</option></select></label>
     <label class="f">Repeat across photo<select id="tile"><option value="0">No</option><option value="1">Yes</option></select></label>
     <label class="f full" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="wmon" checked> Watermark on this photo</label>
     <div class="full row" style="margin-top:0"><label class="btn" style="margin:0">Add a logo (optional)<input id="logo" type="file" accept="image/*" hidden></label><button id="nologo">Remove logo</button></div>
@@ -137,10 +148,14 @@ function block(x,px,py,bw,bh,t,fs,lw,lh){
  if(t){x.textAlign='center';x.fillText(t,px+bw/2,y+fs/2)}
 }
 function watermark(x,w,h){
- const t=$('wt').value.trim();if(!t&&!logo)return;
+ let t=$('wt').value.trim();if(!t&&!logo)return;
+ const cap=$('wcap').value;if(cap==='up')t=t.toUpperCase();else if(cap==='lo')t=t.toLowerCase();
  const fs=Math.max(10,w*+$('wz').value/100);
- x.font=fs+'px system-ui,sans-serif';x.textBaseline='middle';x.fillStyle=$('wc').value;
- x.shadowColor='rgba(0,0,0,.5)';x.shadowBlur=fs*.15;x.globalAlpha=.8;
+ x.font=($('wi').value==='italic'?'italic ':'')+$('ww').value+' '+fs+'px '+$('wf').value;
+ x.textBaseline='middle';x.fillStyle=$('wc').value;
+ try{x.letterSpacing=(fs*(+$('wl').value)/100)+'px'}catch(e){}
+ if($('wsh').value==='1'){x.shadowColor='rgba(0,0,0,.55)';x.shadowBlur=fs*.15}else{x.shadowBlur=0}
+ x.globalAlpha=+$('wo').value/100;
  const tw=t?x.measureText(t).width:0,lw=logo?w*.12:0,lh=logo?lw*logo.naturalHeight/logo.naturalWidth:0;
  const bw=Math.max(tw,lw),bh=(logo?lh:0)+(logo&&t?fs*.3:0)+(t?fs:0);
  if($('tile').value==='1'){
@@ -148,10 +163,10 @@ function watermark(x,w,h){
   for(let gy=-n;gy<n;gy+=bh*3.2)for(let gx=-n;gx<n;gx+=bw*1.7)block(x,gx-bw/2,gy-bh/2,bw,bh,t,fs,lw,lh);
   x.restore();
  }else{
-  const m=w*.03,p=$('wp').value;
+  const m=w*(+$('wmg').value)/100,p=$('wp').value;
   block(x,p.includes('l')?m:p.includes('r')?w-m-bw:(w-bw)/2,p[0]==='t'?m:p[0]==='b'?h-m-bh:(h-bh)/2,bw,bh,t,fs,lw,lh);
  }
- x.globalAlpha=1;x.shadowBlur=0;
+ x.globalAlpha=1;x.shadowBlur=0;try{x.letterSpacing='0px'}catch(e){}
 }
 function previewMark(x,w,h){
  x.save();x.translate(w/2,h/2);x.rotate(-.5);const fs=w*.09;
@@ -266,9 +281,12 @@ $('rot').onclick=()=>{if(cur>=0){photos[cur].rot=((photos[cur].rot||0)+1)%4;buil
 $('applyall').onclick=()=>{photos.forEach(p=>p.look=look);$('msg').textContent='Look applied to all photos.'};
 $('wmon').onchange=()=>{if(cur>=0){photos[cur].wm=$('wmon').checked;draw()}};
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===b));$('t-looks').hidden=b.dataset.t!=='looks';$('t-wm').hidden=b.dataset.t!=='wm'});
-const WM=['wt','wp','wz','wc','tile'];
-WM.forEach(id=>['input','change'].forEach(ev=>$(id).addEventListener(ev,()=>{draw();try{localStorage.setItem('wm2',JSON.stringify(Object.fromEntries(WM.map(i=>[i,$(i).value]))))}catch(e){}})));
-try{const o=JSON.parse(localStorage.getItem('wm2')||'{}');for(const k in o)if($(k))$(k).value=o[k]}catch(e){}
+const WM=['wt','wf','ww','wi','wcap','wz','wl','wo','wmg','wp','wc','wsh','tile'];
+const UNIT={wz:'%',wl:'',wo:'%',wmg:'%'};
+const showNums=()=>Object.keys(UNIT).forEach(k=>$('o-'+k).textContent=$(k).value+UNIT[k]);
+WM.forEach(id=>['input','change'].forEach(ev=>$(id).addEventListener(ev,()=>{draw();showNums();try{localStorage.setItem('wm3',JSON.stringify(Object.fromEntries(WM.map(i=>[i,$(i).value]))))}catch(e){}})));
+try{const o=JSON.parse(localStorage.getItem('wm3')||'{}');for(const k in o)if($(k))$(k).value=o[k]}catch(e){}
+showNums();
 
 // Full screen
 const fs=$('fs');

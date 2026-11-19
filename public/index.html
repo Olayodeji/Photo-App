@@ -43,6 +43,8 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--ac);
 .wm{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .wm .full{grid-column:1/-1}
 label.f{font-size:13px;color:var(--mu);display:block}
+.amts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.gq.on{background:var(--ac);color:var(--ac2);border-color:var(--ac)}
 input[type=range]{width:100%;margin:8px 0 0;accent-color:var(--ac)}
 input[type=color]{width:100%;height:38px;padding:2px;margin-top:3px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);cursor:pointer}
 label.f output{float:right;color:var(--ac);font-weight:600}
@@ -50,7 +52,7 @@ input[type=text],select{width:100%;font:inherit;padding:8px;border:1px solid var
 .msg{color:var(--mu);font-size:13px;margin-top:8px;min-height:18px}
 </style></head><body><div class="wrap">
 <h1>One-Tap Photo Editor</h1>
-<p class="sub">Add your photos, tap a look, add your watermark, download. Your photos never leave your device.</p>
+<p class="sub">Add your photos, tap a look, add your watermark, download. Free to use, and your photos never leave your device.</p>
 <div class="layout">
  <div class="col stick"><div class="card">
   <div class="stage" id="stage">
@@ -92,6 +94,17 @@ input[type=text],select{width:100%;font:inherit;padding:8px;border:1px solid var
     <p class="full sub" style="margin:0;font-size:13px">The same watermark is used on every photo that has it switched on.</p>
    </div></div>
   </div>
+  <div class="card" id="give-card" hidden>
+   <h2>Support this app</h2>
+   <p class="sub" style="margin-bottom:10px">It’s free to use. If it helps you, you’re welcome to give any amount you like. Giving is optional.</p>
+   <div class="amts"><button class="gq" data-a="1000">₦1,000</button><button class="gq" data-a="2000">₦2,000</button><button class="gq" data-a="5000">₦5,000</button><button class="gq" data-a="10000">₦10,000</button></div>
+   <div class="wm">
+    <label class="f">Amount in naira (₦)<input type="text" id="gamt" inputmode="numeric" placeholder="Any amount, e.g. 3000"></label>
+    <label class="f">Your email (for your receipt)<input type="text" id="gem" placeholder="you@example.com"></label>
+    <div class="full row" style="margin-top:0"><button class="p" id="give">Give</button></div>
+   </div>
+   <div class="msg" id="gmsg"></div>
+  </div>
   <div class="card" id="pay">
    <h2>Download your photos</h2>
    <p style="margin:0 0 6px"><b id="pmain">Monthly subscription</b> <span id="local" style="color:var(--mu)"></span></p>
@@ -111,7 +124,9 @@ input[type=text],select{width:100%;font:inherit;padding:8px;border:1px solid var
 <script>
 const $=id=>document.getElementById(id);
 const LOOKS=[['orig','Original',{}],['auto','Auto enhance',{sat:1.12}],['vivid','Vivid',{sat:1.45,con:1.08}],['warm','Warm',{mr:1.08,mb:.9,sat:1.1}],['cool','Cool',{mr:.92,mb:1.1,sat:1.05}],['bw','Black & White',{gray:1,con:1.08}],['noir','Noir',{gray:1,con:1.5,vig:.6}],['vintage','Vintage',{sep:.55,lift:30,vig:.35,sat:.9}],['fade','Soft fade',{sat:.8,lift:28}]];
-let photos=[],cur=-1,look='auto',logo=null,raf=0,paid=false;
+// PAYMENT SWITCH: true = free for everyone (no payment shown). Set to false to bring the paid subscription back.
+const FREE_MODE=true;
+let photos=[],cur=-1,look='auto',logo=null,raf=0,paid=FREE_MODE;
 const cv=$('cv'),API='/.netlify/functions/';
 
 function levels(p){
@@ -309,6 +324,20 @@ $('dlall').onclick=async()=>{
  saveFile('edited-photos.zip',await z.generateAsync({type:'blob'}));
 };
 
+// Donations (shown only in free mode)
+const NAIRA=new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:0});
+const gamt=()=>Math.round(+String($('gamt').value).replace(/[^0-9.]/g,''))||0;
+const markQuick=()=>document.querySelectorAll('.gq').forEach(b=>b.classList.toggle('on',+b.dataset.a===gamt()));
+document.querySelectorAll('.gq').forEach(b=>b.onclick=()=>{$('gamt').value=b.dataset.a;markQuick()});
+$('gamt').addEventListener('input',markQuick);
+$('give').onclick=async()=>{
+ const a=gamt(),m=$('gmsg');
+ if(a<100){m.textContent='Please enter an amount of ₦100 or more.';return}
+ $('give').disabled=true;m.textContent='Opening secure checkout…';
+ try{const j=await api('donate',{action:'start',amount:a,email:$('gem').value.trim()});location.href=j.url}
+ catch(e){m.textContent=e.message;$('give').disabled=false}
+};
+
 // Subscription
 const ls=(k,v)=>{try{return v===undefined?localStorage.getItem(k):localStorage.setItem(k,v)}catch(e){}};
 async function api(n,b){const r=await fetch(API+n,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Something went wrong. Please try again.');return j}
@@ -318,6 +347,15 @@ $('sub').onclick=async()=>{$('sub').disabled=true;$('pmsg').textContent='Opening
 $('haskey').onclick=async()=>{const k=(prompt('Paste your access key')||'').trim();if(k&&!(await check(k)))$('pmsg').textContent='That key isn’t active. Check it or subscribe again.'};
 $('copyk').onclick=async()=>{const k=$('keybox');k.select();try{await navigator.clipboard.writeText(k.value)}catch(e){document.execCommand('copy')}$('copyk').textContent='Copied'};
 (async()=>{
+ if(FREE_MODE){
+  $('pay').hidden=true;$('acct').hidden=true;$('give-card').hidden=false;draw();
+  const ref=new URLSearchParams(location.search).get('reference')||new URLSearchParams(location.search).get('trxref');
+  if(ref){
+   try{const j=await api('donate',{action:'check',reference:ref});if(j.ok)$('gmsg').textContent='Thank you! Your gift of '+NAIRA.format(j.amount)+' was received.'}catch(e){}
+   history.replaceState(null,'',location.pathname);
+  }
+  return;
+ }
  fetch(API+'price').then(r=>r.json()).then(j=>{const f=(a,c)=>new Intl.NumberFormat(undefined,{style:'currency',currency:c,maximumFractionDigits:0}).format(a);if(j.amount){$('pmain').textContent=f(j.amount,j.currency)+' per month';if(j.local)$('local').textContent='(about '+f(j.local.amount,j.local.currency)+')'}}).catch(()=>{});
  const q=new URLSearchParams(location.search),ref=q.get('reference')||q.get('trxref');
  if(ref){$('pmsg').textContent='Confirming your payment…';try{const j=await api('verify',{reference:ref});ls('key',j.token);setPaid(true,j.token);history.replaceState(null,'',location.pathname)}catch(e){$('pmsg').textContent=e.message}return}

@@ -23,3 +23,9 @@ Subscribe on your site using a Paystack test card (listed at paystack.com/docs/p
 
 ## 5. Your own address
 Netlify > Domain management > Add a domain, then follow the steps.
+
+## 6. Free mode and donations
+- The app is currently free. In `public/index.html`, `const FREE_MODE=true;` hides the subscription. Change it to `false` to bring the subscription back.
+- While free, a "Support this app" card lets visitors give any amount through your Paystack account. Gifts are one-off, in naira, and appear in your Paystack dashboard under Transactions.
+- Optional Netlify setting: `SITE_URL` = your site's full address (for example `https://photos.yourname.com`), so people return to your own address after paying.
+- Test mode works the same as before: use the test secret key and a Paystack test card. Switch to your **live** secret key when you're ready for real gifts. No plan code is needed for donations.

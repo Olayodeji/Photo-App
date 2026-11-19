@@ -29,3 +29,4 @@ Netlify > Domain management > Add a domain, then follow the steps.
 - While free, a "Support this app" card lets visitors give any amount through your Paystack account. Gifts are one-off, in naira, and appear in your Paystack dashboard under Transactions.
 - Optional Netlify setting: `SITE_URL` = your site's full address (for example `https://photos.yourname.com`), so people return to your own address after paying.
 - Test mode works the same as before: use the test secret key and a Paystack test card. Switch to your **live** secret key when you're ready for real gifts. No plan code is needed for donations.
+- Visitors outside Nigeria also see an estimate of each gift in their own currency (for example "≈ £4.80"). It is only an estimate: they still pay in naira and their bank sets the final amount.

@@ -19,4 +19,7 @@ const codeOf = key => {
   return crypto.timingSafeEqual(Buffer.from(m), Buffer.from(e)) ? 'CUS_' + id : null;
 };
 const res = (code, obj, extra = {}) => ({ statusCode: code, headers: { 'Content-Type': 'application/json', ...extra }, body: JSON.stringify(obj) });
-module.exports = { ps, keyOf, codeOf, res };
+// Visitor country -> their currency (used to show estimates)
+const M = { US:'USD', GB:'GBP', CA:'CAD', AU:'AUD', NZ:'NZD', GH:'GHS', KE:'KES', ZA:'ZAR', UG:'UGX', TZ:'TZS', RW:'RWF', ZM:'ZMW', BW:'BWP', IN:'INR', AE:'AED', SA:'SAR', QA:'QAR', KW:'KWD', BR:'BRL', MX:'MXN', JP:'JPY', CN:'CNY', KR:'KRW', SG:'SGD', HK:'HKD', MY:'MYR', TH:'THB', ID:'IDR', PH:'PHP', PK:'PKR', BD:'BDT', LK:'LKR', EG:'EGP', MA:'MAD', TR:'TRY', IL:'ILS', CH:'CHF', SE:'SEK', NO:'NOK', DK:'DKK', PL:'PLN', CZ:'CZK', HU:'HUF', RO:'RON', UA:'UAH', RU:'RUB', JM:'JMD', TT:'TTD' };
+'DE FR IT ES NL BE IE PT AT FI GR LU SK SI EE LV LT MT CY HR'.split(' ').forEach(c => M[c] = 'EUR');
+module.exports = { ps, keyOf, codeOf, res, M };

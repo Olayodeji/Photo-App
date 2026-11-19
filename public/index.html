@@ -44,6 +44,8 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--ac);
 .wm .full{grid-column:1/-1}
 label.f{font-size:13px;color:var(--mu);display:block}
 .amts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.gq small{display:block;color:var(--mu);font-size:11px}
+.gq.on small{color:var(--ac2)}
 .gq.on{background:var(--ac);color:var(--ac2);border-color:var(--ac)}
 input[type=range]{width:100%;margin:8px 0 0;accent-color:var(--ac)}
 input[type=color]{width:100%;height:38px;padding:2px;margin-top:3px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);cursor:pointer}
@@ -101,6 +103,7 @@ input[type=text],select{width:100%;font:inherit;padding:8px;border:1px solid var
    <div class="wm">
     <label class="f">Amount in naira (₦)<input type="text" id="gamt" inputmode="numeric" placeholder="Any amount, e.g. 3000"></label>
     <label class="f">Your email (for your receipt)<input type="text" id="gem" placeholder="you@example.com"></label>
+    <div class="full msg" id="gfx" style="margin:0"></div>
     <div class="full row" style="margin-top:0"><button class="p" id="give">Give</button></div>
    </div>
    <div class="msg" id="gmsg"></div>
@@ -327,7 +330,11 @@ $('dlall').onclick=async()=>{
 // Donations (shown only in free mode)
 const NAIRA=new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:0});
 const gamt=()=>Math.round(+String($('gamt').value).replace(/[^0-9.]/g,''))||0;
-const markQuick=()=>document.querySelectorAll('.gq').forEach(b=>b.classList.toggle('on',+b.dataset.a===gamt()));
+let fx=null;
+const fxFmt=n=>new Intl.NumberFormat(undefined,{style:'currency',currency:fx.currency,maximumFractionDigits:n<10?2:0}).format(n);
+function showFx(){$('gfx').textContent=fx&&gamt()?'About '+fxFmt(gamt()*fx.rate)+' in your currency. Your bank sets the final amount.':''}
+function setFx(j){fx=j;document.querySelectorAll('.gq').forEach(b=>{b.innerHTML=NAIRA.format(+b.dataset.a)+'<small>≈ '+fxFmt(+b.dataset.a*fx.rate)+'</small>'});showFx()}
+const markQuick=()=>{document.querySelectorAll('.gq').forEach(b=>b.classList.toggle('on',+b.dataset.a===gamt()));showFx()};
 document.querySelectorAll('.gq').forEach(b=>b.onclick=()=>{$('gamt').value=b.dataset.a;markQuick()});
 $('gamt').addEventListener('input',markQuick);
 $('give').onclick=async()=>{
@@ -349,6 +356,7 @@ $('copyk').onclick=async()=>{const k=$('keybox');k.select();try{await navigator.
 (async()=>{
  if(FREE_MODE){
   $('pay').hidden=true;$('acct').hidden=true;$('give-card').hidden=false;draw();
+  fetch(API+'rates').then(r=>r.json()).then(j=>{if(j.currency&&j.rate)setFx(j)}).catch(()=>{});
   const ref=new URLSearchParams(location.search).get('reference')||new URLSearchParams(location.search).get('trxref');
   if(ref){
    try{const j=await api('donate',{action:'check',reference:ref});if(j.ok)$('gmsg').textContent='Thank you! Your gift of '+NAIRA.format(j.amount)+' was received.'}catch(e){}
